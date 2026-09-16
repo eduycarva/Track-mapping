@@ -1,0 +1,518 @@
+\documentclass[a4paper,12pt]{article}
+
+% --- Pacotes Básicos ---
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{indentfirst}
+\usepackage{enumitem}
+
+% --- Pacotes de Matemática ---
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{gensymb}
+
+% --- Pacotes de Imagens e Tabelas ---
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\graphicspath{{img/}}
+
+% --- Código-fonte ---
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.5,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{matlabstyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    numbers=left,
+    numbersep=5pt,
+    frame=single,
+    tabsize=4,
+    language=Matlab,
+    captionpos=b
+}
+
+% --- Cabeçalhos e Rodapés ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+
+% --- Links e Referências ---
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Guia de Utilização de software de análise de pistas},
+}
+
+
+\begin{document}
+
+\title{Guia de Utilização de software de análise de pistas}
+\begin{minipage}{1\textwidth}
+\includegraphics[scale = 0.5]{img/tupa_logo.png} % Replace with your logo file 
+\\
+EESC USP TUPÃ\\
+Responsáveis - Eduardo Yumoto Carvalheira
+\maketitle
+
+\end{minipage}
+\hfill
+
+\tableofcontents
+\newpage
+
+% =========================================================================
+% SEÇÃO 1 — INTRODUÇÃO
+% =========================================================================
+\section{Introdução}
+
+Durante as pesquisas e validações realizadas ao longo das temporadas de 2025 e 2026, identificou-se uma lacuna técnica significativa na equipe em relação ao mapeamento preciso de pistas. Para que as simulações multicorpos no software \textbf{CarSim} se tornem cada vez mais robustas e fiéis à realidade, é fundamental incorporar dados tridimensionais precisos do traçado, incluindo o perfil de elevação e o raio geométrico das curvas.
+
+O método utilizado anteriormente carecia de rigor científico, dependendo fortemente de estimativas visuais imprecisas e ferramentas gráficas rudimentares (como o software \textit{Paint}) para a análise da geometria das curvas. Essa abordagem não apenas gerava dados imprecisos para as simulações, como também dificultava a reprodutibilidade das validações da equipe.
+
+Portanto, o objetivo deste documento é apresentar uma nova metodologia que supre essa necessidade de precisão no mapeamento de pistas para a equipe EESC-USP Tupã. A nova abordagem transforma a extração de dados em um processo repetível, científico, automatizado e de fácil análise posterior.
+
+Para isso, foi desenvolvido um conjunto de scripts em \textbf{MATLAB} capazes de processar arquivos com a extensão \textit{.gpx} (formato padrão de intercâmbio de dados GPS). Esses arquivos podem ser obtidos facilmente traçando a rota desejada em ferramentas online de mapeamento, como o \href{https://gpx.studio/}{gpx.studio}. O nosso software importará esses pontos de interesse, realizará as conversões geodésicas e os cálculos de curvatura, e exportará os dados finais em formato \textit{.csv} --- planilhas que estão prontas para serem lidas pelas funções do CarSim.
+
+% =========================================================================
+% SEÇÃO 2 — FUNDAMENTAÇÃO TEÓRICA
+% =========================================================================
+\section{Fundamentação Teórica}
+
+Esta seção descreve a base matemática utilizada pelo software. O objetivo é que o usuário compreenda as transformações realizadas e possa avaliar criticamente os resultados obtidos, evitando o uso da ferramenta como uma ``caixa preta''.
+
+% -------------------------------------------------------------------------
+\subsection{O Formato GPX}
+
+O formato \textit{GPX} (\textit{GPS Exchange Format}) é um padrão baseado em XML para intercâmbio de dados de GPS. Cada ponto de interesse (\textit{track point}) armazena três informações fundamentais:
+
+\begin{itemize}
+    \item \textbf{Latitude} (\texttt{lat}): posição angular Norte-Sul, em graus decimais.
+    \item \textbf{Longitude} (\texttt{lon}): posição angular Leste-Oeste, em graus decimais.
+    \item \textbf{Elevação} (\texttt{ele}): altitude acima do nível do mar, em metros.
+\end{itemize}
+
+O arquivo é estruturado em blocos \texttt{<trk>} (trilhas), que contêm segmentos \texttt{<trkseg>}, compostos por sequências de pontos \texttt{<trkpt>}. O nosso parser lê todos esses pontos na ordem em que aparecem no documento.
+
+% -------------------------------------------------------------------------
+\subsection{Conversão de Coordenadas Geodésicas para Cartesianas Locais}
+
+As coordenadas GPS estão no sistema geodésico WGS-84, em graus. Para realizar cálculos de distância e curvatura, é necessário convertê-las para um sistema cartesiano local em \textbf{metros}. Utilizamos a \textbf{aproximação de Terra plana} (\textit{flat-Earth}), que projeta as coordenadas em um plano tangente à superfície terrestre no ponto de origem.
+
+O primeiro ponto da trilha é adotado como a origem do sistema local: $(\text{lat}_0, \text{lon}_0, \text{ele}_0)$. As coordenadas cartesianas de cada ponto $i$ são calculadas como:
+
+\begin{equation}
+    X_i = R \cdot \cos(\text{lat}_0) \cdot (\text{lon}_i - \text{lon}_0) \cdot \frac{\pi}{180}
+    \label{eq:X}
+\end{equation}
+
+\begin{equation}
+    Y_i = R \cdot (\text{lat}_i - \text{lat}_0) \cdot \frac{\pi}{180}
+    \label{eq:Y}
+\end{equation}
+
+\begin{equation}
+    Z_i = \text{ele}_i - \text{ele}_0
+    \label{eq:Z}
+\end{equation}
+
+\noindent onde:
+\begin{itemize}
+    \item $R = 6\,371\,000$ m é o raio médio da Terra.
+    \item $X_i$ é o deslocamento na direção \textbf{Leste} (metros).
+    \item $Y_i$ é o deslocamento na direção \textbf{Norte} (metros).
+    \item $Z_i$ é a elevação relativa ao ponto de partida (metros).
+\end{itemize}
+
+\textbf{Nota sobre precisão:} essa aproximação introduz erros inferiores a 0,1\% para distâncias de até 10 km. Para pistas de FSAE, que tipicamente não ultrapassam 1--2 km de extensão, a precisão é mais do que adequada.
+
+% -------------------------------------------------------------------------
+\subsection{Distância Acumulada --- Station $S$}
+
+O CarSim utiliza a coordenada de \textbf{Station} ($S$) como variável independente principal para definir a geometria da pista. Ela representa a distância acumulada ao longo do traçado, medida a partir do ponto inicial.
+
+A distância entre dois pontos consecutivos é calculada em três dimensões:
+
+\begin{equation}
+    \Delta s_i = \sqrt{(X_{i+1} - X_i)^2 + (Y_{i+1} - Y_i)^2 + (Z_{i+1} - Z_i)^2}
+    \label{eq:ds}
+\end{equation}
+
+E a Station acumulada é:
+
+\begin{equation}
+    S_i = \sum_{k=1}^{i-1} \Delta s_k, \quad \text{com } S_1 = 0
+    \label{eq:S}
+\end{equation}
+
+O valor $S_N$ (último ponto) corresponde ao \textbf{comprimento total da pista}.
+
+% -------------------------------------------------------------------------
+\subsection{Curvatura $\kappa(S)$}
+
+A curvatura é a grandeza geométrica central para a definição do traçado horizontal no CarSim. Ela mede o quanto a direção do percurso varia por unidade de distância percorrida. Matematicamente, utiliza-se a \textbf{fórmula paramétrica da curvatura}:
+
+\begin{equation}
+    \kappa_i = \frac{X'_i \cdot Y''_i - Y'_i \cdot X''_i}{\left(X'^2_i + Y'^2_i\right)^{3/2}}
+    \label{eq:curvatura}
+\end{equation}
+
+\noindent onde $X'$, $Y'$ são as primeiras derivadas e $X''$, $Y''$ são as segundas derivadas das coordenadas suavizadas em relação a $S$, calculadas por \textbf{diferenças centrais}:
+
+\begin{equation}
+    X'_i \approx \frac{X_{i+1} - X_{i-1}}{S_{i+1} - S_{i-1}}, \qquad
+    X''_i \approx \frac{X'_{i+1} - X'_{i-1}}{S_{i+1} - S_{i-1}}
+    \label{eq:derivadas}
+\end{equation}
+
+\textbf{Convenção de sinal} (compatível com o CarSim):
+\begin{itemize}
+    \item $\kappa > 0$: curva para a \textbf{esquerda}.
+    \item $\kappa < 0$: curva para a \textbf{direita}.
+\end{itemize}
+
+O \textbf{raio de curvatura} é o inverso do valor absoluto:
+
+\begin{equation}
+    R_i = \frac{1}{|\kappa_i|}
+    \label{eq:raio}
+\end{equation}
+
+\textbf{Valores de referência para FSAE:}
+\begin{itemize}
+    \item Reta: $\kappa \approx 0$
+    \item \textit{Hairpin} típico ($R \approx 4{,}5$ m): $\kappa \approx 0{,}22$ 1/m
+    \item Curva aberta ($R \approx 25$ m): $\kappa \approx 0{,}04$ 1/m
+\end{itemize}
+
+% -------------------------------------------------------------------------
+\subsection{Inclinação Longitudinal --- \textit{Grade}}
+
+A inclinação longitudinal (\textit{grade}) representa a variação de elevação por unidade de distância percorrida, expressa em porcentagem:
+
+\begin{equation}
+    \text{grade}_i = \frac{Z_{i+1} - Z_{i-1}}{S_{i+1} - S_{i-1}} \times 100 \quad [\%]
+    \label{eq:grade}
+\end{equation}
+
+\noindent onde:
+\begin{itemize}
+    \item Um valor positivo indica uma \textbf{subida}.
+    \item Um valor negativo indica uma \textbf{descida}.
+    \item Pistas planas apresentam $\text{grade} \approx 0\%$.
+\end{itemize}
+
+% -------------------------------------------------------------------------
+\subsection{Suavização dos Dados}
+
+Dados de GPS apresentam um ruído inerente, tipicamente na ordem de 1--3 metros de incerteza. Como o cálculo de curvatura envolve \textbf{segundas derivadas}, o ruído é amplificado consideravelmente. Por isso, antes de calcular a geometria, aplica-se um filtro de \textbf{média móvel} (\textit{moving average}) às coordenadas $X$, $Y$ e $Z$.
+
+O tamanho da janela do filtro é controlado pelo parâmetro \texttt{SMOOTH\_WINDOW} no script principal. Existe um \textit{trade-off} importante:
+
+\begin{table}[H]
+\centering
+\caption{Efeito do tamanho da janela de suavização.}
+\label{tab:smooth}
+\begin{tabular}{cll}
+\toprule
+\textbf{Janela} & \textbf{Vantagem} & \textbf{Desvantagem} \\
+\midrule
+Pequena (3) & Preserva curvas fechadas (\textit{hairpins}) & Curvatura pode ficar ruidosa \\
+Média (5)   & Bom equilíbrio geral & Padrão recomendado \\
+Grande (7+) & Curvas muito suaves & Pode ``cortar'' o raio de curvas fechadas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Recomendação:} usar \texttt{SMOOTH\_WINDOW = 5} como ponto de partida e verificar visualmente se os picos de curvatura correspondem às curvas reais da pista no gráfico de diagnóstico.
+
+
+% =========================================================================
+% SEÇÃO 3 — PRÉ-REQUISITOS E ESTRUTURA DE ARQUIVOS
+% =========================================================================
+\section{Pré-requisitos e Estrutura de Arquivos}
+
+\subsection{Software Necessário}
+
+\begin{itemize}
+    \item \textbf{MATLAB} (versão R2020b ou superior) --- necessário para executar os scripts. Não é necessária nenhuma \textit{toolbox} adicional; o software utiliza apenas funções nativas do MATLAB.
+    \item \textbf{CarSim} --- para importar os dados processados e configurar a pista nas simulações.
+    \item \textbf{Navegador web} --- para acessar o site \href{https://gpx.studio/}{gpx.studio} e gerar os arquivos \textit{.gpx}.
+\end{itemize}
+
+\subsection{Estrutura de Arquivos do Projeto}
+
+Os scripts devem estar organizados na mesma pasta. Ao executar o programa, uma subpasta \texttt{output/} será criada automaticamente para armazenar os resultados. A estrutura esperada é:
+
+\begin{lstlisting}[style=matlabstyle, language={}, caption={Estrutura de diretórios do projeto.}]
+performance/
+|-- gpx_to_carsim.m            % Script principal
+|-- parseGPX.m                 % Funcao: parser do arquivo .gpx
+|-- geo2local.m                % Funcao: conversao de coordenadas
+|-- computeTrackGeometry.m     % Funcao: calculos geometricos
+|-- plotTrackDiagnostics.m     % Funcao: graficos de diagnostico
+|-- sua_pista.gpx              % Arquivo GPX de entrada
+|-- output/                    % Criada automaticamente
+    |-- carsim_curvature.csv   % Station vs Curvatura
+    |-- carsim_elevation.csv   % Station vs Elevacao
+    |-- carsim_grade.csv       % Station vs Inclinacao
+    |-- track_data.mat         % Dados completos (MATLAB)
+\end{lstlisting}
+
+\textbf{Importante:} todos os cinco arquivos \texttt{.m} devem estar na \textbf{mesma pasta} ou no \textit{path} do MATLAB para que as funções sejam encontradas corretamente.
+
+
+% =========================================================================
+% SEÇÃO 4 — OBTENÇÃO DE DADOS DE GPS
+% =========================================================================
+\section{Obtenção de Dados da Pista (Arquivo GPX)}
+
+O arquivo \textit{.gpx} contendo o traçado da pista é o dado de entrada do software. Ele pode ser gerado de forma simples e gratuita utilizando a ferramenta online \href{https://gpx.studio/}{gpx.studio}.
+
+\subsection{Passo a Passo no gpx.studio}
+
+\begin{enumerate}
+    \item Acesse o site \url{https://gpx.studio/} no seu navegador.
+    \item No mapa interativo, navegue até a localização da pista desejada. Utilize o \textit{zoom} para obter uma visão detalhada do traçado.
+    \item Utilize a ferramenta de desenho de rota para \textbf{clicar nos pontos} ao longo do traçado da pista, na ordem em que o carro percorreria o circuito.
+    \item \textbf{Densidade de pontos:} coloque mais pontos nas curvas (onde a curvatura muda rapidamente) e menos nos trechos retos. Isso melhora a resolução geométrica onde ela é mais necessária.
+    \item Ao terminar, exporte o arquivo clicando em \textbf{Arquivo $\rightarrow$ Exportar} (ou no ícone de download) e salve o arquivo com a extensão \texttt{.gpx}.
+    \item Salve o arquivo \texttt{.gpx} na mesma pasta onde estão os scripts do MATLAB.
+\end{enumerate}
+
+\subsection{Boas Práticas para o Mapeamento}
+
+\begin{itemize}
+    \item \textbf{Número mínimo de pontos:} o software requer pelo menos 4 pontos únicos para funcionar. Recomenda-se utilizar pelo menos 20--30 pontos para uma pista típica de FSAE.
+    \item \textbf{Pontos duplicados:} o software remove automaticamente pontos consecutivos sobrepostos (distância menor que 1 cm entre si), então não há problema caso clique duas vezes no mesmo ponto acidentalmente.
+    \item \textbf{Elevação:} o site \textit{gpx.studio} calcula automaticamente a elevação de cada ponto a partir de modelos digitais de terreno. Esse dado é utilizado para o cálculo de \textit{grade} da pista no CarSim.
+    \item \textbf{Pistas fechadas:} para circuitos fechados, coloque o último ponto próximo ao primeiro. O software detectará a proximidade e tratará a continuidade automaticamente.
+\end{itemize}
+
+
+% =========================================================================
+% SEÇÃO 5 — EXECUÇÃO NO MATLAB
+% =========================================================================
+\section{Processamento no MATLAB}
+
+\subsection{Execução do Script Principal}
+
+Para processar um arquivo GPX, siga os passos abaixo:
+
+\begin{enumerate}
+    \item Abra o MATLAB e navegue até a pasta onde estão os scripts (\texttt{performance/}).
+    \item No \textit{Command Window}, digite:
+    \begin{lstlisting}[style=matlabstyle]
+gpx_to_carsim
+    \end{lstlisting}
+    \item Uma janela de seleção de arquivo será aberta. Selecione o arquivo \texttt{.gpx} desejado e clique em \textbf{Abrir}.
+    \item O programa executará todo o pipeline automaticamente:
+    \begin{itemize}
+        \item Leitura e parsing do arquivo GPX
+        \item Conversão de coordenadas para metros
+        \item Limpeza e suavização dos dados
+        \item Cálculo de Station, curvatura e inclinação
+        \item Exportação dos arquivos CSV
+        \item Geração dos gráficos de diagnóstico
+    \end{itemize}
+    \item Ao final, um \textbf{resumo} será exibido no console contendo: número de pontos processados, comprimento total da pista, faixa de curvatura e de inclinação.
+\end{enumerate}
+
+\subsection{Ajuste da Suavização (\texttt{SMOOTH\_WINDOW})}
+\label{sec:smooth}
+
+O único parâmetro que o usuário pode (e deve) calibrar é a \textbf{janela de suavização}, localizada no início do script \texttt{gpx\_to\_carsim.m}:
+
+\begin{lstlisting}[style=matlabstyle]
+SMOOTH_WINDOW = 5;  % Tamanho da janela de media movel (em pontos)
+\end{lstlisting}
+
+\textbf{Como calibrar:}
+
+\begin{enumerate}
+    \item Execute o script com o valor padrão (\texttt{SMOOTH\_WINDOW = 5}).
+    \item Analise o gráfico \textbf{Curvature Profile} (ver Seção \ref{sec:diag}).
+    \item Se a curvatura estiver \textbf{muito ruidosa} (oscilações bruscas em trechos que deveriam ser suaves), aumente a janela para 7.
+    \item Se curvas fechadas (\textit{hairpins}) estiverem com raio maior do que o esperado (curvatura ``achatada''), reduza a janela para 3.
+    \item Repita até que os picos de curvatura correspondam fielmente às curvas reais da pista.
+\end{enumerate}
+
+\subsection{Arquivos Gerados}
+
+Após a execução bem-sucedida, os seguintes arquivos são criados na pasta \texttt{output/}:
+
+\begin{table}[H]
+\centering
+\caption{Arquivos de saída gerados pelo software.}
+\label{tab:saida}
+\begin{tabularx}{\textwidth}{lllX}
+\toprule
+\textbf{Arquivo} & \textbf{Coluna 1} & \textbf{Coluna 2} & \textbf{Destino no CarSim} \\
+\midrule
+\texttt{carsim\_curvature.csv} & Station [m] & Curvatura [1/m] & Road $\rightarrow$ Path (VS Reference Path) \\
+\texttt{carsim\_elevation.csv} & Station [m] & Elevação [m] & Road $\rightarrow$ Elevation \\
+\texttt{carsim\_grade.csv}     & Station [m] & Grade [\%]      & Road $\rightarrow$ Elevation (alternativa) \\
+\texttt{track\_data.mat}       & \multicolumn{2}{l}{Struct completa} & Uso interno no MATLAB \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+% =========================================================================
+% SEÇÃO 6 — ANÁLISE DOS GRÁFICOS DE DIAGNÓSTICO
+% =========================================================================
+\section{Validação e Diagnóstico}
+\label{sec:diag}
+
+Ao final da execução, o script gera automaticamente uma \textbf{figura com 6 painéis} de diagnóstico. Essa figura é a ferramenta principal de validação --- é imprescindível analisá-la antes de importar os dados no CarSim.
+
+\subsection{Painel 1 --- Mapa XY da Pista (\textit{Track Map})}
+
+Exibe a vista superior (\textit{bird's-eye view}) da pista em coordenadas locais (metros). São mostrados:
+
+\begin{itemize}
+    \item \textbf{Pontos cinza:} dados brutos (antes da suavização).
+    \item \textbf{Linha azul:} trajetória suavizada.
+    \item \textbf{Quadrado verde:} ponto de partida.
+    \item \textbf{Triângulo vermelho:} ponto final.
+    \item \textbf{Setas azuis:} direção do percurso.
+\end{itemize}
+
+\textbf{O que verificar:} a linha azul deve seguir fielmente os pontos cinza. Se ela ``cortar'' curvas visivelmente, reduza o \texttt{SMOOTH\_WINDOW}.
+
+\subsection{Painel 2 --- Vista 3D}
+
+Mostra a pista em três dimensões, com a cor da linha representando a elevação. Permite visualizar se o perfil de elevação está coerente com a topografia real do local.
+
+\textbf{O que verificar:} verificar se subidas e descidas estão na direção esperada e se a ordem de grandeza da variação de elevação é plausível.
+
+\subsection{Painel 3 --- Curvatura vs Station}
+
+Gráfico da curvatura $\kappa$ (eixo esquerdo, em 1/m) e do raio de curvatura $R$ (eixo direito, em m, escala logarítmica) ao longo da distância percorrida.
+
+\textbf{O que verificar:}
+\begin{itemize}
+    \item Trechos retos devem apresentar $\kappa \approx 0$.
+    \item Curvas devem gerar picos positivos (esquerda) ou negativos (direita).
+    \item Cada pico deve corresponder a uma curva visível no Painel 1.
+    \item Para \textit{hairpins} de FSAE, espera-se $|\kappa| \approx 0{,}15$--$0{,}25$ 1/m (raio de 4--7 m).
+\end{itemize}
+
+\subsection{Painel 4 --- Elevação vs Station}
+
+Perfil longitudinal da pista: elevação absoluta (eixo esquerdo) e variação relativa $\Delta Z$ (eixo direito) ao longo da distância.
+
+\textbf{O que verificar:} o perfil deve ser suave e sem saltos bruscos. Saltos podem indicar pontos GPX com elevação incorreta.
+
+\subsection{Painel 5 --- Grade vs Station}
+
+Inclinação longitudinal em porcentagem ao longo da pista. Áreas preenchidas positivas indicam subidas; negativas indicam descidas.
+
+\textbf{O que verificar:} para pistas de FSAE, valores típicos de \textit{grade} ficam entre $-5\%$ e $+5\%$. Valores acima de $\pm 15\%$ devem ser investigados.
+
+\subsection{Painel 6 --- Heading vs Station}
+
+Ângulo de direção (em graus) ao longo da pista. Indica para onde o carro está ``apontando'' a cada ponto da trajetória.
+
+\textbf{O que verificar:} a curva deve ser contínua e sem descontinuidades (saltos de 360\degree). Descontinuidades indicam problema no \textit{unwrapping} do ângulo, o que geralmente é causado por pontos muito espaçados em uma curva acentuada.
+
+
+% =========================================================================
+% SEÇÃO 7 — IMPORTAÇÃO NO CARSIM
+% =========================================================================
+\section{Importação de Dados no CarSim}
+
+Após validar os gráficos de diagnóstico, os dados podem ser inseridos no CarSim. O software utiliza o modelo \textbf{VS Road} com sistema de coordenadas $S$-$L$, onde $S$ é exatamente a Station calculada pelo nosso software.
+
+\subsection{Definição do Traçado (Curvatura vs Station)}
+
+Este passo define a geometria horizontal da pista --- ou seja, a forma do traçado visto de cima.
+
+\begin{enumerate}
+    \item No CarSim, navegue até \textbf{Road $\rightarrow$ Path} (ou \textbf{VS Reference Path}).
+    \item Localize a tabela de entrada de curvatura (curvatura como função de Station $S$).
+    \item Abra o arquivo \texttt{carsim\_curvature.csv} (por exemplo, no Excel ou em um editor de texto).
+    \item Copie os valores da coluna \texttt{S\_m} para a coluna de Station do CarSim.
+    \item Copie os valores da coluna \texttt{Curvature\_1\_per\_m} para a coluna de Curvatura.
+    \item Verifique que as unidades estão configuradas como \textbf{metros} e \textbf{1/m}.
+\end{enumerate}
+
+\subsection{Perfil de Elevação}
+
+Este passo define a geometria vertical da pista --- subidas, descidas e trechos planos.
+
+\begin{enumerate}
+    \item No CarSim, navegue até \textbf{Road $\rightarrow$ Elevation}.
+    \item Você pode utilizar uma de duas opções:
+    \begin{itemize}
+        \item \textbf{Opção A --- Elevação direta ($Z$ vs $S$):} utilize o arquivo \texttt{carsim\_elevation.csv}. Cole a coluna \texttt{S\_m} como Station e a coluna \texttt{Elevation\_m} como elevação em metros.
+        \item \textbf{Opção B --- Grade ($\%$ vs $S$):} utilize o arquivo \texttt{carsim\_grade.csv}. Cole a coluna \texttt{S\_m} como Station e a coluna \texttt{Grade\_percent} como inclinação em porcentagem.
+    \end{itemize}
+    \item Recomenda-se usar a \textbf{Opção A} (elevação direta), pois preserva o perfil original sem acumular erros de integração.
+\end{enumerate}
+
+\subsection{Configurações Adicionais}
+
+Após importar a curvatura e a elevação, configure também:
+
+\begin{itemize}
+    \item \textbf{Largura da pista:} defina conforme a regulamentação da prova. Para a prova de \textit{Endurance} da FSAE, a largura mínima é tipicamente de 3 metros.
+    \item \textbf{Coeficiente de atrito:} configure o $\mu$ adequado ao tipo de pavimento da pista (asfalto, concreto, etc.).
+    \item \textbf{\textit{Banking} (superelevação):} o arquivo GPX não contém informação de inclinação lateral. Se necessário, a superelevação deve ser inserida manualmente no CarSim ou estimada a partir da curvatura e de uma velocidade de projeto.
+\end{itemize}
+
+
+% =========================================================================
+% SEÇÃO 8 — TROUBLESHOOTING
+% =========================================================================
+\section{Solução de Problemas (\textit{Troubleshooting})}
+
+\begin{table}[H]
+\centering
+\caption{Problemas comuns e suas soluções.}
+\label{tab:troubleshooting}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.5cm} >{\raggedright\arraybackslash}p{3.5cm} X}
+\toprule
+\textbf{Problema} & \textbf{Causa provável} & \textbf{Solução} \\
+\midrule
+Erro: \textit{``No <trkpt> elements found''} & Arquivo GPX não contém pontos de trilha & Verifique se o arquivo foi exportado corretamente do gpx.studio. O arquivo deve conter blocos \texttt{<trk>} com pontos \texttt{<trkpt>}. \\
+\midrule
+Erro: \textit{``Need at least 4 unique points''} & Arquivo GPX com poucos pontos ou muitos duplicados & Refaça o mapeamento no gpx.studio com mais pontos ao longo do traçado (mínimo recomendado: 20). \\
+\midrule
+Curvatura extremamente ruidosa, com oscilações bruscas & Janela de suavização muito pequena, ou poucos pontos na curva & Aumente \texttt{SMOOTH\_WINDOW} para 7 ou 9. Alternativamente, adicione mais pontos no GPX nas regiões curvas. \\
+\midrule
+Curvas com raio maior que o esperado (curvatura ``achatada'') & Janela de suavização muito grande & Reduza \texttt{SMOOTH\_WINDOW} para 3 e reavalie. \\
+\midrule
+CarSim rejeita os dados ou gera traçado distorcido & Unidades incorretas ou colunas trocadas & Confirme que a coluna de Station está em \textbf{metros} e a curvatura em \textbf{1/m}. A primeira linha do CSV contém o cabeçalho --- verifique se o CarSim está ignorando-a corretamente. \\
+\midrule
+Perfil de elevação com saltos bruscos & Ponto GPX com elevação incorreta no modelo digital de terreno & Identifique o ponto no gráfico de Elevação vs Station. Remova ou corrija o ponto no arquivo \texttt{.gpx} e reprocesse. \\
+\midrule
+Gráfico de \textit{Heading} com descontinuidade (salto de $\pm 360\degree$) & Pontos muito espaçados em curva acentuada & Adicione mais pontos no GPX na região da curva onde ocorre a descontinuidade. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+
+\end{document}
