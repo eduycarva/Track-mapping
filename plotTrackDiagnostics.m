@@ -1,4 +1,4 @@
-function plotTrackDiagnostics(trackData)
+function fig = plotTrackDiagnostics(trackData)
 % PLOTTRACKDIAGNOSTICS  Generate diagnostic plots for track verification.
 %
 %   plotTrackDiagnostics(trackData)
@@ -48,10 +48,15 @@ function plotTrackDiagnostics(trackData)
          'MarkerSize', 4, 'DisplayName', 'Raw GPS');
     hold on;
     plot(X, Y, '-b', 'LineWidth', 1.5, 'DisplayName', 'Smoothed');
-    plot(X(1), Y(1), 'gs', 'MarkerSize', 12, 'MarkerFaceColor', 'g', ...
-         'DisplayName', 'Start');
-    plot(X(end), Y(end), 'r^', 'MarkerSize', 12, 'MarkerFaceColor', 'r', ...
-         'DisplayName', 'End');
+    if isfield(trackData, 'isClosed') && trackData.isClosed
+        plot(X(1), Y(1), 'gs', 'MarkerSize', 12, 'MarkerFaceColor', 'g', ...
+             'DisplayName', 'Start / Finish');
+    else
+        plot(X(1), Y(1), 'gs', 'MarkerSize', 12, 'MarkerFaceColor', 'g', ...
+             'DisplayName', 'Start');
+        plot(X(end), Y(end), 'r^', 'MarkerSize', 12, 'MarkerFaceColor', 'r', ...
+             'DisplayName', 'End');
+    end
 
     % Direction arrows every ~10% of the track
     nArrows = 10;
