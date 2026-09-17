@@ -10,13 +10,15 @@ Developed by the **Performance Subsystem** of the FSAE team **EESC-USP Tupã**.
 
 This project solves a recurring problem in the team: the lack of a precise and reproducible method for mapping real tracks and importing them into the vehicle dynamics simulation software **CarSim**. Previously, curve geometry was estimated visually — now the process is fully automated from GPS coordinates.
 
-The software takes a `.gpx` file (GPS Exchange Format standard), processes the geodetic coordinates (latitude, longitude, altitude), and exports three `.csv` tables ready to be inserted into CarSim:
+The software takes a `.gpx` file (GPS Exchange Format standard), processes the geodetic coordinates (latitude, longitude, altitude), and creates a dedicated folder inside `output/` (named `<track_name>_<YYYY-MM-DD_HH-MM-SS>/`) containing:
 
 | Output file | Contents | CarSim destination |
 |---|---|---|
-| `carsim_curvature.csv` | Station (m) × Curvature (1/m) | Road → Path (VS Reference Path) |
-| `carsim_elevation.csv` | Station (m) × Elevation (m) | Road → Elevation |
-| `carsim_grade.csv` | Station (m) × Grade (%) | Road → Elevation (alternative) |
+| `curvature.csv` | Station (m) × Curvature (1/m) | Road → Path (VS Reference Path) |
+| `elevation.csv` | Station (m) × Elevation (m) | Road → Elevation |
+| `grade.csv` | Station (m) × Grade (%) | Road → Elevation (alternative) |
+| `track_data.mat` | Complete MATLAB struct | Offline analysis / scripts |
+| `track_diagnostics.png` | 6-panel diagnostic plot | Visual inspection and record |
 
 ---
 
@@ -24,7 +26,9 @@ The software takes a `.gpx` file (GPS Exchange Format standard), processes the g
 
 ### 1. Obtain the GPX file
 
-Go to [gpx.studio](https://gpx.studio/) and draw the track layout by clicking points along the path. Export as `.gpx`.
+Draw the track layout by clicking points along the path and export as `.gpx`. 
+
+> **Recommendation:** We recommend using **[plotaroute.com](https://www.plotaroute.com/)** (Plot a Route), which is much easier and more intuitive for racing tracks, parking lots, and skidpads than alternatives like [gpx.studio](https://gpx.studio/), allowing easy freehand drawing and point placement. Make sure to download/export the route in **.gpx** format (including elevation).
 
 ### 2. Run in MATLAB
 
@@ -70,10 +74,12 @@ performance/
 ├── plotTrackDiagnostics.m     # Diagnostic plot generation (6 panels)
 ├── guia_software_pistas.tex   # Full documentation (LaTeX, in Portuguese)
 └── output/                    # Generated automatically
-    ├── carsim_curvature.csv
-    ├── carsim_elevation.csv
-    ├── carsim_grade.csv
-    └── track_data.mat
+    └── <track>_<timestamp>/   # Dedicated folder per run (e.g., endurance_2026-09-16_22-30-00)
+        ├── curvature.csv
+        ├── elevation.csv
+        ├── grade.csv
+        ├── track_data.mat
+        └── track_diagnostics.png
 ```
 
 ---
@@ -113,7 +119,7 @@ The script automatically generates a figure with 6 panels for visual validation:
 
 - **MATLAB** R2020b or later (no additional toolboxes required)
 - **CarSim** (for importing the processed data)
-- Web browser (to access [gpx.studio](https://gpx.studio/))
+- Web browser (to access [plotaroute.com](https://www.plotaroute.com/) or [gpx.studio](https://gpx.studio/))
 
 ---
 
