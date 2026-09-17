@@ -31,7 +31,7 @@ O software recebe um arquivo `.gpx` (padrão de intercâmbio de dados GPS), proc
 
 Desenhe o traçado da pista clicando nos pontos ao longo do percurso e exporte como `.gpx`.
 
-> **Recomendação:** Recomendamos fortemente o uso do site **[plotaroute.com](https://www.plotaroute.com/)** (ferramenta *Create a Route*). Ele é muito mais fácil e intuitivo para traçados de Fórmula SAE (estacionamentos, kartódromos e pátios de teste) do que alternativas como o *gpx.studio*, pois conta com o modo de desenho livre (*Straight / Freehand*) sem forçar a rota a seguir vias públicas. Ao terminar, faça o download no formato **.gpx** com a elevação ativada.
+> **Recomendação:** Recomendamos fortemente o uso do site **[plotaroute.com](https://www.plotaroute.com/)** (ferramenta *Create a Route*). Ele é muito mais fácil e intuitivo para traçados de Fórmula SAE (estacionamentos, kartódromos e pátios de teste).
 
 ### 2. Execute no MATLAB
 
