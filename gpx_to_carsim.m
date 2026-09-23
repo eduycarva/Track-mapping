@@ -4,8 +4,10 @@
 %    1. Parse .gpx file  →  lat, lon, ele
 %    2. Convert to local Cartesian  →  X, Y, Z  [meters]
 %    3. Clean, smooth, and compute track geometry
-%    4. Export CarSim-ready 3D coordinate tables (RdEdges format: X, Y, Z, S)
-%    5. Generate diagnostic plots
+%    4. Rotate coordinates so initial heading aligns with East (+X)
+%       (CarSim always starts the vehicle heading East)
+%    5. Export CarSim-ready 3D coordinate tables (RdEdges format: X, Y, Z, S)
+%    6. Generate diagnostic plots
 %
 %  USAGE:
 %    Run this script. A file browser will open for you to select a .gpx file.
@@ -97,7 +99,45 @@ trackData = computeTrackGeometry(X, Y, Z, SMOOTH_WINDOW);
 fprintf('\n');
 
 %% ========================================================================
-%  STAGE 8 — EXPORT CARSIM-READY TABLES
+%  STAGE 8 — ROTATE COORDINATES TO ALIGN INITIAL HEADING WITH EAST (+X)
+%  ========================================================================
+%  CarSim always starts the vehicle heading East (positive X direction).
+%  If the track's initial segment points in a different direction, the car
+%  will start "sideways" or even backwards.  We fix this by rotating all
+%  X-Y coordinates so that the first segment of the smoothed track points
+%  exactly along +X.  Station S, curvature, and grade are invariant under
+%  rotation, so they need no change.
+
+theta0 = trackData.theta(1);   % initial heading [rad], already from smoothed data
+
+cosA = cos(-theta0);
+sinA = sin(-theta0);
+
+% Pivot point = start of smoothed path
+x0 = trackData.X(1);
+y0 = trackData.Y(1);
+
+% Rotate smoothed coordinates
+dX = trackData.X - x0;
+dY = trackData.Y - y0;
+trackData.X = x0 + dX * cosA - dY * sinA;
+trackData.Y = y0 + dX * sinA + dY * cosA;
+
+% Rotate raw coordinates (used in diagnostic plots)
+dX_raw = trackData.X_raw - x0;
+dY_raw = trackData.Y_raw - y0;
+trackData.X_raw = x0 + dX_raw * cosA - dY_raw * sinA;
+trackData.Y_raw = y0 + dX_raw * sinA + dY_raw * cosA;
+
+% Adjust heading angles (subtract the initial offset)
+trackData.theta = trackData.theta - theta0;
+
+fprintf('Rotated track by %.1f deg so initial heading aligns with East (+X).\n', ...
+        rad2deg(-theta0));
+fprintf('\n');
+
+%% ========================================================================
+%  STAGE 9 — EXPORT CARSIM-READY TABLES
 %  ========================================================================
 
 % Create run-specific output folder: output/trackName_YYYY-MM-DD_HH-MM-SS/
@@ -183,7 +223,7 @@ end
 fprintf('\n');
 
 %% ========================================================================
-%  STAGE 9 — DIAGNOSTIC PLOTS
+%  STAGE 10 — DIAGNOSTIC PLOTS
 %  ========================================================================
 
 plotTrackDiagnostics(trackData);
