@@ -14,8 +14,7 @@
 %    Alternatively, set the variable 'gpxFile' before running to automate.
 %
 %  OUTPUTS (saved to ./output/<trackName>_<timestamp>/):
-%    carsim_rdedges.csv    — X [m], Y [m], Z [m], Station [m] (Header '0, 1, 2, 3')
-%    rdedges.csv           — Alias to carsim_rdedges.csv
+%    rdedges.csv           — X [m], Y [m], Z [m], Station [m] (Header '0, 1, 2, 3')
 %    carsim_xyz.csv        — X [m], Y [m], Z [m] (Header '0, 1, 2')
 %    elevation.csv         — Station [m] vs Elevation [m]
 %    grade.csv             — Station [m] vs Grade [%]
@@ -24,8 +23,9 @@
 %
 %  After running, insert the data into CarSim:
 %    • Road: 3D Surface / X-Y-Z Coordinates of Edges (ou Reference Line)
-%      Paste or import carsim_rdedges.csv (columns: X, Y, Z, S).
-%      CarSim automatically computes the path, curvature, and elevation!
+%      Abra o arquivo 'rdedges.csv' com o Bloco de Notas (Notepad), copie todo o
+%      conteúdo (Ctrl+A, Ctrl+C) e cole diretamente na tabela do CarSim!
+%      O CarSim calcula automaticamente a malha 3D, curvatura e elevação.
 %
 %  See also: parseGPX, geo2local, computeTrackGeometry, plotTrackDiagnostics
 
@@ -99,42 +99,50 @@ trackData = computeTrackGeometry(X, Y, Z, SMOOTH_WINDOW);
 fprintf('\n');
 
 %% ========================================================================
-%  STAGE 8 — ROTATE COORDINATES TO ALIGN INITIAL HEADING WITH EAST (+X)
+%  STAGE 8 — TRANSLATE TO ORIGIN (0, 0, 0) AND ROTATE TO EAST (+X)
 %  ========================================================================
-%  CarSim always starts the vehicle heading East (positive X direction).
-%  If the track's initial segment points in a different direction, the car
-%  will start "sideways" or even backwards.  We fix this by rotating all
-%  X-Y coordinates so that the first segment of the smoothed track points
-%  exactly along +X.  Station S, curvature, and grade are invariant under
-%  rotation, so they need no change.
+%  CarSim always spawns the vehicle at (0, 0) with initial heading along
+%  the positive X axis (East, 0 deg). If the track starts at an arbitrary
+%  offset or points in another direction, the car spawns misaligned relative
+%  to the track and reference dashed axes.
+%
+%  Solution:
+%    1. Translate coordinates so the first point starts strictly at (0, 0, 0).
+%    2. Rotate all X-Y coordinates by -theta0 around (0, 0) so the initial
+%       tangent vector points strictly along +X (East).
+%  Station S, curvature, and grade are invariant under rigid body rotation/translation.
 
-theta0 = trackData.theta(1);   % initial heading [rad], already from smoothed data
+theta0 = trackData.theta(1);   % initial heading [rad], from smoothed data
 
 cosA = cos(-theta0);
 sinA = sin(-theta0);
 
-% Pivot point = start of smoothed path
+% Reference origin = start of smoothed path
 x0 = trackData.X(1);
 y0 = trackData.Y(1);
+z0 = trackData.Z(1);
 
-% Rotate smoothed coordinates
+% Translate to (0, 0, 0) and rotate smoothed coordinates
 dX = trackData.X - x0;
 dY = trackData.Y - y0;
-trackData.X = x0 + dX * cosA - dY * sinA;
-trackData.Y = y0 + dX * sinA + dY * cosA;
+trackData.X = dX * cosA - dY * sinA;
+trackData.Y = dX * sinA + dY * cosA;
+trackData.Z = trackData.Z - z0;
 
-% Rotate raw coordinates (used in diagnostic plots)
+% Translate and rotate raw coordinates (used in diagnostic plots)
 dX_raw = trackData.X_raw - x0;
 dY_raw = trackData.Y_raw - y0;
-trackData.X_raw = x0 + dX_raw * cosA - dY_raw * sinA;
-trackData.Y_raw = y0 + dX_raw * sinA + dY_raw * cosA;
+trackData.X_raw = dX_raw * cosA - dY_raw * sinA;
+trackData.Y_raw = dX_raw * sinA + dY_raw * cosA;
+trackData.Z_raw = trackData.Z_raw - z0;
 
 % Adjust heading angles (subtract the initial offset)
 trackData.theta = trackData.theta - theta0;
 
-fprintf('Rotated track by %.1f deg so initial heading aligns with East (+X).\n', ...
+fprintf('Aligned track to CarSim reference frame:\n');
+fprintf('  • Origin shifted: start point is (0.00, 0.00, 0.00) m\n');
+fprintf('  • Rotated by %.1f deg so initial heading aligns with East (+X)\n\n', ...
         rad2deg(-theta0));
-fprintf('\n');
 
 %% ========================================================================
 %  STAGE 9 — EXPORT CARSIM-READY TABLES
@@ -152,7 +160,7 @@ fprintf('Output folder: %s\n\n', RUN_DIR);
 
 % --- Table 1: Road Edges / 3D Coordinates with Station (X, Y, Z, S) ---
 % Formato RdEdges CarSim: cabeçalho '0, 1, 2, 3' com colunas X, Y, Z e S (Station)
-rdedgesFile = fullfile(RUN_DIR, 'carsim_rdedges.csv');
+rdedgesFile = fullfile(RUN_DIR, 'rdedges.csv');
 fid = fopen(rdedgesFile, 'w');
 if fid ~= -1
     fprintf(fid, '0, 1, 2, 3\n');
@@ -162,13 +170,6 @@ if fid ~= -1
     end
     fclose(fid);
     fprintf('Exported: %s\n', rdedgesFile);
-    
-    % Salva também cópia com nome rdedges.csv
-    try
-        copyfile(rdedgesFile, fullfile(RUN_DIR, 'rdedges.csv'));
-        fprintf('Exported: %s\n', fullfile(RUN_DIR, 'rdedges.csv'));
-    catch
-    end
 else
     warning('gpx_to_carsim:writeError', 'Could not open %s for writing.', rdedgesFile);
 end
@@ -258,7 +259,7 @@ fprintf('--------------------------------------------------\n');
 fprintf('  OUTPUT FOLDER:\n');
 fprintf('    %s\n', RUN_DIR);
 fprintf('  FILES GENERATED:\n');
-fprintf('    • carsim_rdedges.csv    (0, 1, 2, 3 -> X, Y, Z, S for CarSim)\n');
+fprintf('    • rdedges.csv           (0, 1, 2, 3 -> X, Y, Z, S for CarSim)\n');
 fprintf('    • carsim_xyz.csv        (0, 1, 2    -> X, Y, Z)\n');
 fprintf('    • elevation.csv         (S vs Z)\n');
 fprintf('    • grade.csv             (S vs Grade%%)\n');
@@ -267,10 +268,10 @@ fprintf('    • track_diagnostics.png (diagnostic plot)\n');
 fprintf('==================================================\n');
 fprintf('\n');
 fprintf('Next steps in CarSim:\n');
-fprintf('  1. Open CarSim -> Road: 3D Surface (X-Y-Z Coordinates of Edges / Reference Line)\n');
-fprintf('  2. Import or paste data from carsim_rdedges.csv (or rdedges.csv)\n');
-fprintf('     (CarSim will automatically build the path, curvature, and elevation!)\n');
-fprintf('  3. Run your simulation!\n');
+fprintf('  1. Open ''rdedges.csv'' with Notepad (Bloco de Notas), press Ctrl+A and Ctrl+C\n');
+fprintf('  2. In CarSim -> Road: 3D Surface (X-Y-Z Coordinates of Edges / Reference Line)\n');
+fprintf('  3. Paste (Ctrl+V) directly into the table (Header ''0, 1, 2, 3'' maps automatically)\n');
+fprintf('  4. Run your simulation!\n');
 
 % Clear gpxFile from base workspace so the next run prompts user again
 clear gpxFile;
