@@ -96,6 +96,7 @@ fprintf('\n');
 %  ========================================================================
 
 trackData = computeTrackGeometry(X, Y, Z, SMOOTH_WINDOW);
+trackData.ele0 = ele(1); % Save absolute starting elevation for plotting
 fprintf('\n');
 
 %% ========================================================================
