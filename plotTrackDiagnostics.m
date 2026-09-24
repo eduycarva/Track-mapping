@@ -102,39 +102,45 @@ function fig = plotTrackDiagnostics(trackData)
     %  Plot 3 — Curvature vs Station
     % =====================================================================
     subplot(2, 3, 3);
-    plot(S, kap, '-r', 'LineWidth', 1.2);
+    yyaxis left;
+    plot(S, kap, '-r', 'LineWidth', 1.2, 'DisplayName', 'Curvature \kappa');
     hold on;
-    yline(0, '--', 'Color', [0.5 0.5 0.5]);
+    yline(0, '--', 'Color', [0.5 0.5 0.5], 'HandleVisibility', 'off');
     hold off;
     grid on;
     xlabel('Station S [m]');
     ylabel('Curvature \kappa [1/m]');
-    title('Curvature Profile');
 
     % Add a secondary Y-axis for turn radius
     yyaxis right;
     R_turn = 1 ./ max(abs(kap), 1e-6);
     R_turn(abs(kap) < 1e-4) = NaN;  % suppress near-straight values
-    plot(S, R_turn, ':m', 'LineWidth', 0.8);
+    plot(S, R_turn, ':m', 'LineWidth', 0.8, 'DisplayName', 'Turn Radius R');
     ylabel('Turn Radius R [m]');
     set(gca, 'YScale', 'log');
     ylim([1, max(R_turn(~isnan(R_turn)))*2]);
+    
+    title('Curvature Profile');
+    legend('Location', 'best');
 
     % =====================================================================
     %  Plot 4 — Elevation vs Station
     % =====================================================================
     subplot(2, 3, 4);
-    eleAbsolute = Z + trackData.Z_raw(1);  % recover absolute elevation
-    plot(S, eleAbsolute, '-k', 'LineWidth', 1.5);
+    yyaxis left;
+    eleAbsolute = Z + trackData.ele0;  % recover absolute elevation
+    plot(S, eleAbsolute, '-k', 'LineWidth', 1.5, 'DisplayName', 'Absolute Elev.');
     grid on;
     xlabel('Station S [m]');
     ylabel('Elevation [m a.s.l.]');
-    title('Elevation Profile');
 
     % Add ΔZ on right axis
     yyaxis right;
-    plot(S, Z, '-', 'Color', [0 0.6 0.3], 'LineWidth', 1);
+    plot(S, Z, '-', 'Color', [0 0.6 0.3], 'LineWidth', 1, 'DisplayName', '\DeltaZ (Relative)');
     ylabel('\DeltaZ from start [m]');
+    
+    title('Elevation Profile');
+    legend('Location', 'best');
 
     % =====================================================================
     %  Plot 5 — Grade vs Station
