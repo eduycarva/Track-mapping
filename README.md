@@ -1,4 +1,4 @@
-# 🏎️ GPX → CarSim Track Builder
+# GPX → CarSim Track Builder
 
 **Ferramenta MATLAB para converter arquivos de GPS (.gpx) em dados de pista tridimensionais compatíveis com o CarSim.**
 
@@ -6,7 +6,7 @@ Desenvolvido pelo **Subsistema de Performance** da equipe FSAE **EESC-USP Tupã*
 
 ---
 
-## 📋 Sobre
+## Sobre
 
 Este projeto resolve um problema recorrente na equipe: a falta de um método preciso, científico e reprodutível para mapear pistas reais e importá-las no software de dinâmica veicular **CarSim**. Anteriormente, a geometria das curvas era estimada visualmente (usando Paint e métodos empíricos) — agora, o processo é 100% automatizado a partir de coordenadas GPS.
 
@@ -25,7 +25,7 @@ O software recebe um arquivo `.gpx` (padrão de intercâmbio de dados GPS), proc
 
 ---
 
-## 🧭 Referencial e Orientação Automática para o CarSim
+## Referencial e Orientação Automática para o CarSim
 
 No CarSim, o veículo é inicializado por padrão no ponto de origem $(X = 0, Y = 0, Z = 0)$ apontando no sentido positivo do eixo $X$ (Leste, heading $0^\circ$), delimitado pelas retas tracejadas do grid de referência.
 
@@ -38,7 +38,7 @@ Para garantir compatibilidade imediata e sem ajustes manuais:
 
 ---
 
-## 🚀 Como Usar
+## Como Usar
 
 ### 1. Obtenha o arquivo GPX da pista
 
@@ -71,7 +71,7 @@ Para garantir que o CarSim reconheça as colunas sem conflitos de formatação o
 
 ---
 
-## 📐 O que o Software Calcula
+## O que o Software Calcula
 
 1. **Conversão Geodésica** — Converte (latitude, longitude, altitude) para coordenadas cartesianas locais ($X, Y, Z$) em metros usando a aproximação de Terra plana (*flat-Earth*).
 
@@ -96,7 +96,7 @@ $$\kappa = \frac{X' \cdot Y'' - Y' \cdot X''}{(X'^2 + Y'^2)^{3/2}}$$
 
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 pistas/
@@ -119,7 +119,7 @@ pistas/
 
 ---
 
-## ⚙️ Configuração
+## Configuração
 
 O único parâmetro ajustável pelo usuário encontra-se no início de `gpx_to_carsim.m`:
 
@@ -135,7 +135,7 @@ SMOOTH_WINDOW = 5;  % Tamanho da janela de média móvel (em pontos)
 
 ---
 
-## 📊 Gráficos de Diagnóstico
+## Gráficos de Diagnóstico
 
 O script gera automaticamente uma figura com 6 subplots (salva como `track_diagnostics.png` na pasta da pista):
 
@@ -150,7 +150,7 @@ O script gera automaticamente uma figura com 6 subplots (salva como `track_diagn
 
 ---
 
-## 📝 Requisitos
+## Requisitos
 
 - **MATLAB** R2020b ou superior (não requer toolboxes pagas adicionais)
 - **CarSim** (para simulação veicular da pista)
@@ -158,16 +158,16 @@ O script gera automaticamente uma figura com 6 subplots (salva como `track_diagn
 
 ---
 
-## 📖 Documentação Completa
+## Documentação Completa
 
 O manual detalhado com formulação matemática, equações, alinhamento de referencial e guia de importação está disponível nos arquivos:
 
-* 📄 Código-fonte: [`guia_software_pistas.tex`](guia_software_pistas.tex)
-* 📕 Documento PDF compilado: [`Track_mapping___GUIDE.pdf`](Track_mapping___GUIDE.pdf)
+*  Código-fonte: [`guia_software_pistas.tex`](guia_software_pistas.tex)
+*  Documento PDF compilado: [`Track_mapping___GUIDE.pdf`](Track_mapping___GUIDE.pdf)
 
 ---
 
-## 👤 Autor
+## Autor
 
 **Eduardo Yumoto Carvalheira** — Gerente de Performance
 
