@@ -162,7 +162,6 @@ O script gera automaticamente uma figura com 6 subplots (salva como `track_diagn
 
 O manual detalhado com formulação matemática, equações, alinhamento de referencial e guia de importação está disponível nos arquivos:
 
-*  Código-fonte: [`guia_software_pistas.tex`](guia_software_pistas.tex)
 *  Documento PDF compilado: [`Track_mapping___GUIDE.pdf`](Track_mapping___GUIDE.pdf)
 
 ---
