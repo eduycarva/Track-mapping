@@ -1,174 +1,174 @@
 # GPX → CarSim Track Builder
 
-**Ferramenta MATLAB para converter arquivos de GPS (.gpx) em dados de pista tridimensionais compatíveis com o CarSim.**
+**MATLAB tool to convert GPS files (.gpx) into 3D track data compatible with CarSim.**
 <img width="2188" height="1275" alt="track_diagnostics" src="https://github.com/user-attachments/assets/a52f414c-a355-4b12-a97e-56b7bf38afbe" />
 
-Desenvolvido pelo **Subsistema de Performance** da equipe FSAE **EESC-USP Tupã**.
+Developed by the **Performance Subsystem** of the FSAE team **EESC-USP Tupã**.
 
 ---
 
-## Sobre
+## About
 
-Este projeto resolve um problema recorrente na equipe: a falta de um método preciso, científico e reprodutível para mapear pistas reais e importá-las no software de dinâmica veicular **CarSim**. Anteriormente, a geometria das curvas era estimada visualmente (usando Paint e métodos empíricos) — agora, o processo é 100% automatizado a partir de coordenadas GPS.
+This project solves a recurring challenge for the team: the lack of an accurate, scientific, and reproducible method to map real tracks and import them into the vehicle dynamics software **CarSim**. Previously, corner geometry was estimated visually (using MS Paint and empirical methods) — now, the process is 100% automated from GPS coordinates.
 
-O software recebe um arquivo `.gpx` (padrão de intercâmbio de dados GPS), processa as coordenadas geodésicas (latitude, longitude, altitude), ajusta o traçado para o sistema de coordenadas nativo do CarSim e cria uma pasta exclusiva dentro de `output/` (no formato `<nome_da_pista>_<AAAA-MM-DD_HH-MM-SS>/`) contendo:
+The software takes a `.gpx` file (standard GPS Exchange Format), processes the geodetic coordinates (latitude, longitude, altitude), adjusts the track layout to CarSim's native coordinate system, and creates a dedicated folder inside `output/` (formatted as `<track_name>_<YYYY-MM-DD_HH-MM-SS>/`) containing:
 
-| Arquivo de saída | Conteúdo | Destino no CarSim |
+| Output File | Contents | CarSim Destination |
 |---|---|---|
-| `rdedges.csv` | $X$ (m), $Y$ (m), $Z$ (m), Station (m) [Cabeçalho `0, 1, 2, 3`] | Road → 3D Surface / X-Y-Z Coordinates of Edges / Reference Line |
-| `carsim_xyz.csv` | $X$ (m), $Y$ (m), $Z$ (m) [Cabeçalho `0, 1, 2`] | Road → X-Y-Z Coordinates (3 coordenadas) |
-| `elevation.csv` | Station (m) × Elevação (m) | Road → Elevation (referência / validação) |
-| `grade.csv` | Station (m) × Inclinação (%) | Road → Elevation (alternativa) |
-| `track_data.mat` | Struct completa do MATLAB | Análise offline / telemetria / scripts |
-| `track_diagnostics.png` | Imagem com 6 gráficos de diagnóstico | Registro visual e validação técnica |
+| `rdedges.csv` | $X$ (m), $Y$ (m), $Z$ (m), Station (m) [Header `0, 1, 2, 3`] | Road → 3D Surface / X-Y-Z Coordinates of Edges / Reference Line |
+| `carsim_xyz.csv` | $X$ (m), $Y$ (m), $Z$ (m) [Header `0, 1, 2`] | Road → X-Y-Z Coordinates (3 coordinates) |
+| `elevation.csv` | Station (m) × Elevation (m) | Road → Elevation (reference / validation) |
+| `grade.csv` | Station (m) × Grade (%) | Road → Elevation (alternative) |
+| `track_data.mat` | Complete MATLAB struct | Offline analysis / telemetry / scripts |
+| `track_diagnostics.png` | Image with 6 diagnostic plots | Visual record and technical validation |
 
-> **Nota sobre Coordenadas 3D e Curvatura:** O CarSim possui suporte nativo à importação direta de coordenadas espaciais 3D através da tela **Road: 3D Surface (X-Y-Z Coordinates of Edges / Reference Line)** utilizando o formato `rdedges.csv` (cabeçalho `0, 1, 2, 3`). O próprio CarSim calcula a curvatura horizontal, a direção tangencial e a elevação de forma contínua e unificada, eliminando a necessidade de tabelas isoladas de curvatura e prevenindo discrepâncias numéricas entre eixos.
-
----
-
-## Referencial e Orientação Automática para o CarSim
-
-No CarSim, o veículo é inicializado por padrão no ponto de origem $(X = 0, Y = 0, Z = 0)$ apontando no sentido positivo do eixo $X$ (Leste, heading $0^\circ$), delimitado pelas retas tracejadas do grid de referência.
-
-Se a pista for importada com coordenadas geográficas locais puras e a reta de largada apontar para o Norte, Oeste ou diagonal, o carro inicializará fora do traçado ou virado de lado/ao contrário em relação às retas tracejadas do CarSim.
-
-Para garantir compatibilidade imediata e sem ajustes manuais:
-1. **Origem em $(0, 0, 0)$:** O primeiro ponto da pista é transladado exatamente para a origem $(X_1 = 0, Y_1 = 0, Z_1 = 0)$.
-2. **Rotação Automática ($-\theta_0$):** Todas as coordenadas no plano horizontal são rotacionadas em relação à origem pelo ângulo inicial $-\theta_0$, alinhando o vetor da reta inicial rigorosamente com o eixo $+X$ (Leste).
-3. **Invariância Geométrica:** A distância acumulada (Station $S$), o perfil de elevação, o *grade* e a curvatura $\kappa$ são invariantes sob translação e rotação rígida, preservando a física exata do traçado original.
+> **Note on 3D Coordinates and Curvature:** CarSim natively supports direct import of 3D spatial coordinates through the screen **Road: 3D Surface (X-Y-Z Coordinates of Edges / Reference Line)** using the `rdedges.csv` format (header `0, 1, 2, 3`). CarSim automatically computes horizontal curvature, tangential heading, and elevation in a continuous and unified manner, eliminating the need for standalone curvature tables and preventing numerical discrepancies between axes.
 
 ---
 
-## Como Usar
+## Reference Frame and Automatic Orientation for CarSim
 
-### 1. Obtenha o arquivo GPX da pista
+In CarSim, the vehicle is initialized by default at the origin $(X = 0, Y = 0, Z = 0)$ facing the positive $X$-axis direction (East, heading $0^\circ$), delimited by the dashed reference grid lines.
 
-Desenhe o traçado da pista clicando nos pontos ao longo do percurso e exporte como `.gpx`.
+If the track were imported using raw local geographic coordinates and the start/finish straight pointed North, West, or diagonally, the car would initialize off-track or facing sideways/backwards relative to the CarSim grid lines.
 
-> **Recomendação:** Recomendamos fortemente o uso do site **[plotaroute.com](https://www.plotaroute.com/)** (ferramenta *Create a Route*). Ele é muito mais fácil e intuitivo para traçados de Fórmula SAE (estacionamentos, kartódromos e pátios de teste) do que alternativas como o *gpx.studio*, pois conta com o modo de desenho livre (*Straight / Freehand*) sem forçar a rota a seguir vias públicas. Ao terminar, faça o download no formato **.gpx** com a elevação ativada.
+To ensure immediate, out-of-the-box compatibility without manual adjustments:
+1. **Origin at $(0, 0, 0)$:** The first point of the track is translated exactly to the origin $(X_1 = 0, Y_1 = 0, Z_1 = 0)$.
+2. **Automatic Rotation ($-\theta_0$):** All horizontal coordinates are rotated relative to the origin by the initial heading angle $-\theta_0$, strictly aligning the initial straight-line vector with the $+X$ axis (East).
+3. **Geometric Invariance:** Accumulated distance (Station $S$), elevation profile, grade, and curvature $\kappa$ are invariant under rigid body translation and rotation, preserving the exact physics of the original track layout.
 
-### 2. Execute no MATLAB
+---
 
-No console do MATLAB, execute:
+## How to Use
+
+### 1. Obtain the Track GPX File
+
+Draw the track layout by clicking points along the path and export it as `.gpx`.
+
+> **Recommendation:** We strongly recommend using **[plotaroute.com](https://www.plotaroute.com/)** (*Create a Route* tool). It is significantly easier and more intuitive for Formula SAE layouts (parking lots, karting tracks, and test pads) than alternatives like *gpx.studio*, as it features a freehand drawing mode (*Straight / Freehand*) without forcing the route to snap to public roads. When finished, download the file in **.gpx** format with elevation enabled.
+
+### 2. Run in MATLAB
+
+In the MATLAB command window, run:
 
 ```matlab
 gpx_to_carsim
 ```
 
-Uma janela de seleção de arquivo será aberta. Selecione o arquivo `.gpx` e o script executará todo o processamento automaticamente.
+A file picker dialog will open. Select the `.gpx` file, and the script will execute the complete processing pipeline automatically.
 
-### 3. Importe no CarSim (Método do Bloco de Notas)
+### 3. Import into CarSim (Notepad Method)
 
-Para garantir que o CarSim reconheça as colunas sem conflitos de formatação ou problemas de separador decimal:
+To ensure CarSim parses the columns without formatting conflicts or decimal separator issues:
 
-1. Acesse a pasta gerada em `output/<nome_da_pista>_<data_hora>/`.
-2. Abra o arquivo **`rdedges.csv`** com o **Bloco de Notas (Notepad)** (ou qualquer editor de texto simples).
-3. Pressione `Ctrl + A` para selecionar todo o texto e `Ctrl + C` para copiar.
-4. No CarSim, acesse o menu de pistas: **Road: 3D Surface (X-Y-Z Coordinates of Edges)** ou **Road: Centerline & Edges (X-Y-Z Coordinates)**.
-5. Clique na tabela de coordenadas e cole com `Ctrl + V`. O CarSim preencherá automaticamente as colunas $X$, $Y$, $Z$ e $S$ a partir do cabeçalho `0, 1, 2, 3`.
-6. Ajuste a largura da pista (*width*, tipicamente 3 metros para FSAE) e o coeficiente de atrito ($\mu$).
+1. Open the generated folder in `output/<track_name>_<date_time>/`.
+2. Open the **`rdedges.csv`** file using **Notepad** (or any plain text editor).
+3. Press `Ctrl + A` to select all text and `Ctrl + C` to copy.
+4. In CarSim, navigate to the road screen: **Road: 3D Surface (X-Y-Z Coordinates of Edges)** or **Road: Centerline & Edges (X-Y-Z Coordinates)**.
+5. Click on the coordinate table and paste with `Ctrl + V`. CarSim will automatically populate the $X$, $Y$, $Z$, and $S$ columns matching the `0, 1, 2, 3` header.
+6. Set the track width (*width*, typically 3 meters for FSAE) and friction coefficient ($\mu$).
 
-> **Por que usar o Bloco de Notas?** Softwares de planilha como o Microsoft Excel frequentemente convertem os pontos decimais (`.`) em vírgulas (`,`) dependendo do idioma do Windows, o que corrompe a importação no CarSim. O Bloco de Notas preserva a formatação ASCII pura e limpa do arquivo.
+> **Why use Notepad?** Spreadsheet software like Microsoft Excel frequently converts decimal dots (`.`) to commas (`,`) depending on the Windows system locale, corrupting the CarSim import. Notepad preserves the pure, clean ASCII formatting of the file.
 
 ---
 
-## O que o Software Calcula
+## What the Software Computes
 
-1. **Conversão Geodésica** — Converte (latitude, longitude, altitude) para coordenadas cartesianas locais ($X, Y, Z$) em metros usando a aproximação de Terra plana (*flat-Earth*).
+1. **Geodetic Conversion** — Converts (latitude, longitude, altitude) to local Cartesian coordinates ($X, Y, Z$) in meters using the flat-Earth approximation.
 
-2. **Detecção e Fechamento de Circuito** — Detecta circuitos fechados e une os extremos de forma contínua, aplicando condições de contorno periódicas na suavização.
+2. **Closed-Circuit Detection and Closure** — Detects closed tracks and joins end-points smoothly, applying periodic boundary conditions during smoothing.
 
-3. **Alinhamento com CarSim** — Translada a largada para $(0, 0, 0)$ e rotaciona o traçado para iniciar apontando para $+X$ (Leste).
+3. **CarSim Alignment** — Translates the starting point to $(0, 0, 0)$ and rotates the track so it begins pointing towards $+X$ (East).
 
-4. **Station $S$** — Distância acumulada ao longo da linha de centro da pista (variável independente fundamental do CarSim).
+4. **Station $S$** — Cumulative distance along the track centerline (CarSim's fundamental independent variable).
 
-5. **Bordas da Pista (RdEdges $X, Y, Z, S$)** — Formatação exata com cabeçalho `0, 1, 2, 3` no arquivo `rdedges.csv` para geração imediata da superfície 3D no CarSim.
+5. **Track Edges (RdEdges $X, Y, Z, S$)** — Formatted precisely with header `0, 1, 2, 3` in `rdedges.csv` for immediate 3D surface generation in CarSim.
 
-6. **Curvatura $\kappa(S)$ e Ângulo de Direção** — Calculados analiticamente para o gráfico de diagnóstico e validação técnica:
+6. **Curvature $\kappa(S)$ and Heading Angle** — Computed analytically for diagnostic plotting and technical validation:
 
 $$\kappa = \frac{X' \cdot Y'' - Y' \cdot X''}{(X'^2 + Y'^2)^{3/2}}$$
 
-   - $\kappa > 0 \rightarrow$ curva para a esquerda
-   - $\kappa < 0 \rightarrow$ curva para a direita
+   - $\kappa > 0 \rightarrow$ left turn
+   - $\kappa < 0 \rightarrow$ right turn
 
-7. **Inclinação Longitudinal (*Grade*)** — Inclinação em \%, obtida da derivada da elevação em relação à Station.
+7. **Longitudinal Slope (*Grade*)** — Slope in %, obtained from the derivative of elevation with respect to Station.
 
-8. **Filtro de Suavização** — Média móvel aplicada nas coordenadas espaciais para atenuar o ruído característico do GPS antes do cálculo de derivadas.
+8. **Smoothing Filter** — Moving average applied to spatial coordinates to attenuate characteristic GPS noise prior to computing derivatives.
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 pistas/
-├── gpx_to_carsim.m            % Script principal — execute este
-├── parseGPX.m                 % Parser XML de arquivos .gpx
-├── geo2local.m                % Conversão geodésica → cartesiana local
-├── computeTrackGeometry.m     % Motor de cálculo (Station, fechamento, curvatura, grade)
-├── plotTrackDiagnostics.m     % Geração dos 6 gráficos de diagnóstico
-├── guia_software_pistas.tex   % Documentação completa em LaTeX
-├── Track_mapping___GUIDE.pdf  % Manual compilado em PDF
-└── output/                    % Gerada automaticamente
-    └── <pista>_<timestamp>/   % Pasta exclusiva por execução
-        ├── rdedges.csv        % Tabela 3D + Station para o CarSim (0, 1, 2, 3)
-        ├── carsim_xyz.csv     % Coordenadas 3D (0, 1, 2)
-        ├── elevation.csv      % Station vs Elevação
-        ├── grade.csv          % Station vs Inclinação (%)
-        ├── track_data.mat     % Struct completa do MATLAB
-        └── track_diagnostics.png % Imagem dos gráficos de diagnóstico
+├── gpx_to_carsim.m            % Main script — run this
+├── parseGPX.m                 % XML parser for .gpx files
+├── geo2local.m                % Geodetic → local Cartesian conversion
+├── computeTrackGeometry.m     % Calculation engine (Station, closure, curvature, grade)
+├── plotTrackDiagnostics.m     % Generation of the 6 diagnostic plots
+├── guia_software_pistas.tex   % Complete documentation in LaTeX
+├── Track_mapping___GUIDE.pdf  % Compiled PDF manual
+└── output/                    % Generated automatically
+    └── <track>_<timestamp>/   % Dedicated folder per execution
+        ├── rdedges.csv        % 3D Table + Station for CarSim (0, 1, 2, 3)
+        ├── carsim_xyz.csv     % 3D Coordinates (0, 1, 2)
+        ├── elevation.csv      % Station vs Elevation
+        ├── grade.csv          % Station vs Grade (%)
+        ├── track_data.mat     % Complete MATLAB struct
+        └── track_diagnostics.png % Diagnostic plots image
 ```
 
 ---
 
-## Configuração
+## Configuration
 
-O único parâmetro ajustável pelo usuário encontra-se no início de `gpx_to_carsim.m`:
+The only user-tunable parameter is located at the top of `gpx_to_carsim.m`:
 
 ```matlab
-SMOOTH_WINDOW = 5;  % Tamanho da janela de média móvel (em pontos)
+SMOOTH_WINDOW = 5;  % Moving average window size (in points)
 ```
 
-| Valor | Efeito |
+| Value | Effect |
 |---|---|
-| 3 | Preserva curvas muito fechadas (*hairpins*), porém mais suscetível a ruídos |
-| **5** | **Equilíbrio padrão recomendado** |
-| 7+ | Curvas bastante suaves, pode arredondar vértices fechados |
+| 3 | Preserves very tight turns (*hairpins*), but is more sensitive to noise |
+| **5** | **Recommended default balance** |
+| 7+ | Very smooth curves, may round off sharp corners |
 
 ---
 
-## Gráficos de Diagnóstico
+## Diagnostic Plots
 
-O script gera automaticamente uma figura com 6 subplots (salva como `track_diagnostics.png` na pasta da pista):
+The script automatically generates a figure with 6 subplots (saved as `track_diagnostics.png` in the track output folder):
 
-| Painel | Descrição |
+| Panel | Description |
 |---|---|
-| **Mapa XY** | Vista superior com trajetória bruta vs suavizada e alinhamento no referencial CarSim |
-| **Vista 3D** | Pista no espaço tridimensional com gradiente de cor por elevação |
-| **Curvatura vs Station** | Perfil de curvatura $\kappa$ com raio de curva $R$ no eixo secundário |
-| **Elevação vs Station** | Perfil longitudinal de altitude e variação $\Delta Z$ |
-| **Grade vs Station** | Inclinação longitudinal (%) ao longo do percurso |
-| **Heading vs Station** | Ângulo de direção da trajetória (em graus, iniciando em $0^\circ$) |
+| **XY Map** | Top-down view showing raw vs smoothed trajectory and alignment with CarSim frame |
+| **3D View** | Track in 3D space with color gradient by elevation |
+| **Curvature vs Station** | Curvature profile $\kappa$ with corner radius $R$ on secondary axis |
+| **Elevation vs Station** | Longitudinal elevation profile and altitude variation $\Delta Z$ |
+| **Grade vs Station** | Longitudinal slope (%) along the course |
+| **Heading vs Station** | Heading direction angle of the trajectory (in degrees, starting at $0^\circ$) |
 
 ---
 
-## Requisitos
+## Requirements
 
-- **MATLAB** R2020b ou superior (não requer toolboxes pagas adicionais)
-- **CarSim** (para simulação veicular da pista)
-- Navegador web (para acessar o [plotaroute.com](https://www.plotaroute.com/) ou [gpx.studio](https://gpx.studio/))
-
----
-
-## Documentação Completa
-
-O manual detalhado com formulação matemática, equações, alinhamento de referencial e guia de importação está disponível nos arquivos:
-
-*  Documento PDF compilado: [`Track_mapping___GUIDE.pdf`](Track_mapping___GUIDE.pdf)
+- **MATLAB** R2020b or higher (no paid toolboxes required)
+- **CarSim** (for vehicle simulation on the track)
+- Web browser (to access [plotaroute.com](https://www.plotaroute.com/) or [gpx.studio](https://gpx.studio/))
 
 ---
 
-## Autor
+## Full Documentation
 
-**Eduardo Yumoto Carvalheira** — Gerente de Performance
+The detailed manual with mathematical formulations, equations, reference frame alignment, and import guide is available in:
 
-Equipe FSAE EESC-USP Tupã | São Carlos, SP
+* Compiled PDF document: [`Track_mapping___GUIDE.pdf`](Track_mapping___GUIDE.pdf)
+
+---
+
+## Author
+
+**Eduardo Yumoto Carvalheira** — Performance Manager
+
+FSAE Team EESC-USP Tupã | São Carlos, SP, Brazil
