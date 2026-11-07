@@ -1,6 +1,7 @@
 # GPX → CarSim Track Builder
 
 **Ferramenta MATLAB para converter arquivos de GPS (.gpx) em dados de pista tridimensionais compatíveis com o CarSim.**
+<img width="2188" height="1275" alt="track_diagnostics" src="https://github.com/user-attachments/assets/a52f414c-a355-4b12-a97e-56b7bf38afbe" />
 
 Desenvolvido pelo **Subsistema de Performance** da equipe FSAE **EESC-USP Tupã**.
 
